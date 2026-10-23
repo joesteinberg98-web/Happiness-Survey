@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>How Happy Is Your World?</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#f6f4ef; --card:#ffffff; --ink:#1f2a33; --muted:#66727d; --line:#e4e0d6;
+    --you:#e8743b; --actual:#2a6f97; --crowd:#7a9a4a; --good:#2e8b57; --bad:#c8453b;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:880px;margin:0 auto;padding:24px 16px 80px}
+  h1{font-size:2rem;line-height:1.2;margin:.2em 0 .3em}
+  h2{font-size:1.35rem;margin:0 0 .4em}
+  h3{font-size:1.05rem;margin:1.2em 0 .4em}
+  p{margin:.4em 0 1em}
+  .muted{color:var(--muted)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin:16px 0}
+  .steps{display:flex;gap:6px;margin:8px 0 18px}
+  .steps span{flex:1;height:6px;border-radius:3px;background:var(--line)}
+  .steps span.on{background:var(--you)}
+  button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:12px 20px;background:var(--you);color:#fff;font-weight:600}
+  button:hover:not(:disabled){filter:brightness(.95)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.secondary{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .spread{justify-content:space-between}
+  input[type=text],textarea{width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+  textarea{min-height:150px;resize:vertical}
+  .rate{display:grid;grid-template-columns:1fr;gap:6px;padding:14px 0;border-bottom:1px solid var(--line)}
+  .rate:last-child{border-bottom:0}
+  .rate .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .rate .name{font-weight:600}
+  .chip{display:inline-block;font-size:.75rem;padding:2px 8px;border-radius:99px;background:#efece3;color:var(--muted);margin-left:6px;font-weight:500}
+  .val{font-variant-numeric:tabular-nums;font-weight:700;min-width:3ch;text-align:right}
+  .val.untouched{color:var(--muted);font-weight:500}
+  input[type=range]{width:100%;accent-color:var(--you)}
+  input[type=range].untouched{opacity:.55}
+  .scale{display:flex;justify-content:space-between;font-size:.78rem;color:var(--muted)}
+  .pair{padding:14px 0;border-bottom:1px solid var(--line)}
+  .pair:last-child{border-bottom:0}
+  .pair .q{font-weight:600;margin-bottom:8px}
+  .choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .choice{background:#fff;color:var(--ink);border:2px solid var(--line);padding:14px 10px;text-align:center}
+  .choice.sel{border-color:var(--you);background:#fff3ec}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+  .stat{background:#faf8f3;border:1px solid var(--line);border-radius:12px;padding:14px}
+  .stat b{display:block;font-size:1.6rem;line-height:1.2}
+  .stat small{color:var(--muted)}
+  .chartbox{position:relative;width:100%}
+  table{width:100%;border-collapse:collapse;font-size:.92rem}
+  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;font-size:.8rem;text-transform:uppercase;letter-spacing:.03em}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:.78rem;font-weight:600}
+  .tag.ok{background:#e3f3e9;color:var(--good)} .tag.near{background:#fdf1d8;color:#9a6b00} .tag.off{background:#fbe4e1;color:var(--bad)}
+  .review{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:10px 12px;border-radius:10px;margin:8px 0;border:1px solid var(--line)}
+  .review.ok{background:#f0f8f3;border-color:#cfe8d8} .review.off{background:#fdf1ef;border-color:#f3d2ce}
+  .themes{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+  .theme{background:#eef4f8;color:var(--actual);padding:4px 10px;border-radius:99px;font-size:.88rem;font-weight:600}
+  .banner{background:#fff8e6;border:1px solid #f0dca6;border-radius:12px;padding:10px 14px;font-size:.9rem;margin:12px 0}
+  .legend{display:flex;gap:16px;font-size:.85rem;color:var(--muted);margin:4px 0 8px;flex-wrap:wrap}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}
+  [hidden]{display:none!important}
+  .spinner{display:inline-block;width:16px;height:16px;border:3px solid var(--line);border-top-color:var(--you);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-3px;margin-right:8px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @media (max-width:560px){h1{font-size:1.6rem}.choices{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="steps" id="steps"><span></span><span></span><span></span><span></span></div>
+
+  <!-- INTRO -->
+  <section id="s-intro">
+    <h1>How happy is your world?</h1>
+    <p class="muted">Rate countries, guess who ranks higher, tell us why &mdash; then see how your instincts stack up against the World Happiness Report data and against other players.</p>
+    <div class="card">
+      <p><b>What you'll do</b></p>
+      <ol>
+        <li>Grade <span id="n-rate"></span> countries on how happy you think their people are.</li>
+        <li>Take a <span id="n-quiz"></span>-question &ldquo;which is happier?&rdquo; quiz.</li>
+        <li>Explain, in your own words, why some countries rank higher.</li>
+        <li>See your results in charts and compare with previous players.</li>
+      </ol>
+      <label for="player" class="muted">Nickname (optional)</label>
+      <input type="text" id="player" maxlength="40" placeholder="e.g. Sam">
+      <div class="banner" id="demo-banner" hidden></div>
+      <p style="margin-top:16px"><button id="btn-start">Start</button></p>
+    </div>
+  </section>
+
+  <!-- RATE -->
+  <section id="s-rate" hidden>
+    <h2>Part 1 &middot; Grade the happiness</h2>
+    <p class="muted">Move each slider to show how happy you think the average person in that country is, from 0 (least happy imaginable) to 10 (happiest imaginable). Sliders turn solid once you touch them.</p>
+    <div class="card" id="rate-list"></div>
+    <div class="row spread">
+      <span class="muted" id="rate-progress"></span>
+      <button id="btn-rate-next" disabled>Next: the quiz</button>
+    </div>
+  </section>
+
+  <!-- QUIZ -->
+  <section id="s-quiz" hidden>
+    <h2>Part 2 &middot; Which country is happier?</h2>
+    <p class="muted">For each pair, pick the country you think has the higher happiness score.</p>
+    <div class="card" id="quiz-list"></div>
+    <div class="row spread">
+      <button class="secondary" id="btn-quiz-back">Back</button>
+      <span class="muted" id="quiz-progress"></span>
+      <button id="btn-quiz-next" disabled>Next: your reasoning</button>
+    </div>
+  </section>
+
+  <!-- WHY -->
+  <section id="s-why" hidden>
+    <h2>Part 3 &middot; Why do some countries rank higher?</h2>
+    <p class="muted">In a few sentences, what do you think makes people in some countries happier than in others?</p>
+    <div class="card">
+      <textarea id="why" maxlength="2000" placeholder="I think countries rank higher when…"></textarea>
+      <div class="muted" id="why-count" style="text-align:right;font-size:.85rem">0 / 2000</div>
+    </div>
+    <div class="row spread">
+      <button class="secondary" id="btn-why-back">Back</button>
+      <button id="btn-finish" disabled>See my results</button>
+    </div>
+  </section>
+
+  <!-- LOADING -->
+  <section id="s-loading" hidden>
+    <div class="card"><span class="spinner"></span>Scoring your answers…</div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="s-results" hidden>
+    <h2>Your results</h2>
+    <div class="banner" id="save-note" hidden></div>
+    <div class="stats" id="stats"></div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Your ratings vs. the actual happiness scores</h3>
+      <div class="legend"><span><i style="background:var(--you)"></i>Your rating</span><span><i style="background:var(--actual)"></i>Actual score</span></div>
+      <div class="chartbox" id="box-rating"><canvas id="ch-rating"></canvas></div>
+      <p class="muted" style="font-size:.85rem;margin-top:10px">Real scores range roughly 2.7&ndash;7.5, so most people rate more generously than the data does.</p>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Where you were right and wrong</h3>
+      <table id="tbl-rating"></table>
+      <h3>Perceived vs. actual</h3>
+      <p class="muted" style="font-size:.9rem">Dots above the line: you rated the country happier than the data says. Below: you rated it lower.</p>
+      <div class="chartbox" style="height:340px"><canvas id="ch-scatter"></canvas></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Quiz review &mdash; <span id="quiz-score-txt"></span></h3>
+      <div id="quiz-review"></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Your reasoning, checked against the data</h3>
+      <div class="muted" style="font-size:.85rem" id="analysis-source"></div>
+      <div class="themes" id="themes"></div>
+      <p id="feedback"></p>
+      <p class="muted" style="font-size:.9rem">How strongly each factor tracks the happiness score across all countries (correlation). Factors you mentioned are highlighted.</p>
+      <div class="chartbox" style="height:300px"><canvas id="ch-factors"></canvas></div>
+    </div>
+
+    <div class="card" style="text-align:center">
+      <button id="btn-compare">Compare my answers with previous players</button>
+    </div>
+
+    <div id="compare" hidden>
+      <h2>You vs. everyone else</h2>
+      <div id="compare-status" class="card"></div>
+      <div id="compare-body" hidden>
+        <div class="stats" id="cmp-stats"></div>
+        <div class="card">
+          <h3 style="margin-top:0">Ratings: you, the crowd, and the data</h3>
+          <div class="legend"><span><i style="background:var(--you)"></i>You</span><span><i style="background:var(--crowd)"></i>Crowd average</span><span><i style="background:var(--actual)"></i>Actual</span></div>
+          <div class="chartbox" id="box-crowd"><canvas id="ch-crowd"></canvas></div>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0">Quiz: how often each pair was answered correctly</h3>
+          <div class="chartbox" id="box-pairs"><canvas id="ch-pairs"></canvas></div>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0">Quiz score distribution</h3>
+          <div class="chartbox" style="height:260px"><canvas id="ch-hist"></canvas></div>
+        </div>
+        <div class="card">
+          <h3 style="margin-top:0">What other players think drives happiness</h3>
+          <div class="themes" id="cmp-themes"></div>
+          <p id="cmp-summary"></p>
+        </div>
+      </div>
+    </div>
+
+    <p style="margin-top:24px"><button class="secondary" id="btn-restart">Play again</button></p>
+  </section>
+
+</div>
+
+<script>
+/* =====================  CONFIG  ===================== */
+const CONFIG = {
+  // Paste your deployed Google Apps Script web-app URL here (see SETUP.md).
+  // Leave empty to run in local demo mode (answers stay in this browser only).
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbwH9SQCmJ8XOq1sXJ2BuyBX_jjh5eUtdakPbWfOkHcypZ_HiK4U1DShR0f_DHkBhlL2uw/exec",
+  SEED: 2026,          // change to get a different (but still fixed) set of countries for everyone
+  RATE_COUNT: 12       // how many countries players grade
+};
+
+/* =====================  DATA  ===================== */
+// c=country r=rank s=score reg=region econ/fam/health/free/gen/corr = factor contributions, job = job satisfaction (null if missing)
+const DATA = [{"c":"Norway","r":1,"s":7.537,"reg":"Western Europe","econ":1.6165,"fam":1.5335,"health":0.7967,"free":0.6354,"gen":0.362,"corr":0.316,"job":94.6},{"c":"Denmark","r":2,"s":7.522,"reg":"Western Europe","econ":1.4824,"fam":1.5511,"health":0.7926,"free":0.626,"gen":0.3553,"corr":0.4008,"job":93.5},{"c":"Iceland","r":3,"s":7.504,"reg":"Western Europe","econ":1.4806,"fam":1.6106,"health":0.8336,"free":0.6272,"gen":0.4755,"corr":0.1535,"job":94.5},{"c":"Switzerland","r":4,"s":7.494,"reg":"Western Europe","econ":1.565,"fam":1.5169,"health":0.8581,"free":0.6201,"gen":0.2905,"corr":0.367,"job":93.7},{"c":"Finland","r":5,"s":7.469,"reg":"Western Europe","econ":1.4436,"fam":1.5402,"health":0.8092,"free":0.618,"gen":0.2455,"corr":0.3826,"job":91.2},{"c":"Netherlands","r":6,"s":7.377,"reg":"Western Europe","econ":1.5039,"fam":1.4289,"health":0.8107,"free":0.5854,"gen":0.4705,"corr":0.2827,"job":93.8},{"c":"Canada","r":7,"s":7.316,"reg":"North America","econ":1.4792,"fam":1.4813,"health":0.8346,"free":0.6111,"gen":0.4355,"corr":0.2874,"job":90.5},{"c":"New Zealand","r":8,"s":7.314,"reg":"Asia-Pacific","econ":1.4057,"fam":1.5482,"health":0.8168,"free":0.6141,"gen":0.5,"corr":0.3828,"job":88.6},{"c":"Sweden","r":9,"s":7.284,"reg":"Western Europe","econ":1.4944,"fam":1.4782,"health":0.8309,"free":0.6129,"gen":0.3854,"corr":0.3844,"job":92.7},{"c":"Australia","r":10,"s":7.284,"reg":"Asia-Pacific","econ":1.4844,"fam":1.51,"health":0.8439,"free":0.6016,"gen":0.4777,"corr":0.3012,"job":89.2},{"c":"Israel","r":11,"s":7.213,"reg":"Asia-Pacific","econ":1.3754,"fam":1.3763,"health":0.8384,"free":0.406,"gen":0.3301,"corr":0.0852,"job":82.1},{"c":"Costa Rica","r":12,"s":7.079,"reg":"Latin America","econ":1.1097,"fam":1.4164,"health":0.7595,"free":0.5801,"gen":0.2146,"corr":0.1001,"job":89.9},{"c":"Austria","r":13,"s":7.006,"reg":"Western Europe","econ":1.4871,"fam":1.4599,"health":0.8153,"free":0.5678,"gen":0.3165,"corr":0.2211,"job":95.1},{"c":"United States","r":14,"s":6.993,"reg":"North America","econ":1.5463,"fam":1.4199,"health":0.7743,"free":0.5057,"gen":0.3926,"corr":0.1356,"job":85.3},{"c":"Ireland","r":15,"s":6.977,"reg":"Western Europe","econ":1.5357,"fam":1.5582,"health":0.8098,"free":0.5731,"gen":0.4279,"corr":0.2984,"job":91.5},{"c":"Germany","r":16,"s":6.951,"reg":"Western Europe","econ":1.4879,"fam":1.4725,"health":0.799,"free":0.5625,"gen":0.3363,"corr":0.2767,"job":90.4},{"c":"Belgium","r":17,"s":6.891,"reg":"Western Europe","econ":1.4638,"fam":1.4623,"health":0.8181,"free":0.5398,"gen":0.2315,"corr":0.2513,"job":91.1},{"c":"Luxembourg","r":18,"s":6.863,"reg":"Western Europe","econ":1.7419,"fam":1.4576,"health":0.8451,"free":0.5966,"gen":0.2832,"corr":0.3188,"job":93.4},{"c":"United Kingdom","r":19,"s":6.714,"reg":"Western Europe","econ":1.4416,"fam":1.4965,"health":0.8053,"free":0.5082,"gen":0.4928,"corr":0.2654,"job":87.4},{"c":"Chile","r":20,"s":6.652,"reg":"Latin America","econ":1.2528,"fam":1.284,"health":0.8195,"free":0.3769,"gen":0.3267,"corr":0.0823,"job":79.8},{"c":"United Arab Emirates","r":21,"s":6.648,"reg":"Asia-Pacific","econ":1.6263,"fam":1.2664,"health":0.7268,"free":0.6083,"gen":0.3609,"corr":0.3245,"job":79.8},{"c":"Brazil","r":22,"s":6.635,"reg":"Latin America","econ":1.1074,"fam":1.4313,"health":0.6166,"free":0.4375,"gen":0.1623,"corr":0.1111,"job":79.8},{"c":"Czech Republic","r":23,"s":6.609,"reg":"Western Europe","econ":1.3527,"fam":1.4339,"health":0.7544,"free":0.4909,"gen":0.0881,"corr":0.0369,"job":79.8},{"c":"Argentina","r":24,"s":6.599,"reg":"Latin America","econ":1.1853,"fam":1.4405,"health":0.6951,"free":0.4945,"gen":0.1095,"corr":0.0597,"job":79.8},{"c":"Mexico","r":25,"s":6.578,"reg":"Latin America","econ":1.1532,"fam":1.2109,"health":0.71,"free":0.4127,"gen":0.121,"corr":0.1328,"job":82.4},{"c":"Singapore","r":26,"s":6.572,"reg":"Asia-Pacific","econ":1.6923,"fam":1.3538,"health":0.9495,"free":0.5498,"gen":0.346,"corr":0.4643,"job":91.0},{"c":"Malta","r":27,"s":6.527,"reg":"Western Europe","econ":1.3433,"fam":1.4884,"health":0.8219,"free":0.5888,"gen":0.5747,"corr":0.1531,"job":85.2},{"c":"Uruguay","r":28,"s":6.454,"reg":"Latin America","econ":1.2176,"fam":1.4122,"health":0.7192,"free":0.5794,"gen":0.1751,"corr":0.1781,"job":82.0},{"c":"Guatemala","r":29,"s":6.454,"reg":"Latin America","econ":0.872,"fam":1.2556,"health":0.5402,"free":0.5313,"gen":0.2835,"corr":0.0772,"job":88.1},{"c":"Panama","r":30,"s":6.452,"reg":"Latin America","econ":1.2337,"fam":1.3732,"health":0.7062,"free":0.55,"gen":0.2106,"corr":0.071,"job":88.3},{"c":"France","r":31,"s":6.442,"reg":"Western Europe","econ":1.4309,"fam":1.3878,"health":0.8445,"free":0.4702,"gen":0.1298,"corr":0.1725,"job":86.0},{"c":"Thailand","r":32,"s":6.424,"reg":"Asia-Pacific","econ":1.1279,"fam":1.4258,"health":0.6472,"free":0.5802,"gen":0.5721,"corr":0.0316,"job":93.7},{"c":"Spain","r":34,"s":6.403,"reg":"Western Europe","econ":1.3844,"fam":1.5321,"health":0.889,"free":0.4088,"gen":0.1901,"corr":0.0709,"job":88.1},{"c":"Qatar","r":35,"s":6.375,"reg":"Asia-Pacific","econ":1.8708,"fam":1.2743,"health":0.7101,"free":0.6041,"gen":0.3305,"corr":0.4393,"job":87.8},{"c":"Colombia","r":36,"s":6.357,"reg":"Latin America","econ":1.0706,"fam":1.4022,"health":0.595,"free":0.4775,"gen":0.149,"corr":0.0467,"job":82.7},{"c":"Saudi Arabia","r":37,"s":6.344,"reg":"Asia-Pacific","econ":1.5306,"fam":1.2867,"health":0.5901,"free":0.4498,"gen":0.1476,"corr":0.2734,"job":85.7},{"c":"Trinidad and Tobago","r":38,"s":6.168,"reg":"Latin America","econ":1.3614,"fam":1.3802,"health":0.52,"free":0.5186,"gen":0.3253,"corr":0.009,"job":82.1},{"c":"Kuwait","r":39,"s":6.105,"reg":"Asia-Pacific","econ":1.633,"fam":1.2597,"health":0.6321,"free":0.4963,"gen":0.2283,"corr":0.2152,"job":87.4},{"c":"Slovakia","r":40,"s":6.098,"reg":"Eastern Europe","econ":1.3254,"fam":1.5051,"health":0.7127,"free":0.2958,"gen":0.1365,"corr":0.0242,"job":81.4},{"c":"Bahrain","r":41,"s":6.087,"reg":"Asia-Pacific","econ":1.4884,"fam":1.3231,"health":0.6531,"free":0.5367,"gen":0.1727,"corr":0.257,"job":79.9},{"c":"Malaysia","r":42,"s":6.084,"reg":"Asia-Pacific","econ":1.2912,"fam":1.2846,"health":0.6188,"free":0.4023,"gen":0.4166,"corr":0.0656,"job":85.0},{"c":"Nicaragua","r":43,"s":6.071,"reg":"Latin America","econ":0.7373,"fam":1.2872,"health":0.6531,"free":0.4476,"gen":0.3017,"corr":0.1307,"job":82.3},{"c":"Ecuador","r":44,"s":6.008,"reg":"Latin America","econ":1.0008,"fam":1.2862,"health":0.6856,"free":0.4552,"gen":0.1501,"corr":0.1401,"job":83.0},{"c":"El Salvador","r":45,"s":6.003,"reg":"Latin America","econ":0.9098,"fam":1.1821,"health":0.596,"free":0.4325,"gen":0.0783,"corr":0.09,"job":80.9},{"c":"Poland","r":46,"s":5.973,"reg":"Eastern Europe","econ":1.2918,"fam":1.4457,"health":0.6995,"free":0.5203,"gen":0.1585,"corr":0.0593,"job":86.9},{"c":"Uzbekistan","r":47,"s":5.971,"reg":"Asia-Pacific","econ":0.7864,"fam":1.549,"health":0.4983,"free":0.6582,"gen":0.416,"corr":0.2465,"job":87.0},{"c":"Italy","r":48,"s":5.964,"reg":"Western Europe","econ":1.3951,"fam":1.4449,"health":0.8531,"free":0.2565,"gen":0.1728,"corr":0.028,"job":85.5},{"c":"Russia","r":49,"s":5.963,"reg":"Eastern Europe","econ":1.2818,"fam":1.4693,"health":0.5473,"free":0.3738,"gen":0.0523,"corr":0.033,"job":74.6},{"c":"Belize","r":50,"s":5.956,"reg":"Latin America","econ":0.908,"fam":1.0814,"health":0.4502,"free":0.5475,"gen":0.24,"corr":0.0966,"job":84.1},{"c":"Japan","r":51,"s":5.92,"reg":"Asia-Pacific","econ":1.4169,"fam":1.4363,"health":0.9135,"free":0.5056,"gen":0.1206,"corr":0.1638,"job":74.0},{"c":"Lithuania","r":52,"s":5.902,"reg":"Eastern Europe","econ":1.3146,"fam":1.4735,"health":0.6289,"free":0.2342,"gen":0.0102,"corr":0.0119,"job":79.4},{"c":"Algeria","r":53,"s":5.872,"reg":"Africa","econ":1.0919,"fam":1.1462,"health":0.6176,"free":0.2333,"gen":0.0694,"corr":0.1461,"job":68.6},{"c":"Latvia","r":54,"s":5.85,"reg":"Eastern Europe","econ":1.2607,"fam":1.4047,"health":0.6386,"free":0.3257,"gen":0.1531,"corr":0.0738,"job":82.1},{"c":"South Korea","r":55,"s":5.838,"reg":"Asia-Pacific","econ":1.4017,"fam":1.1283,"health":0.9002,"free":0.2579,"gen":0.2067,"corr":0.0633,"job":74.0},{"c":"Moldova","r":56,"s":5.838,"reg":"Eastern Europe","econ":0.7289,"fam":1.2518,"health":0.5895,"free":0.2407,"gen":0.2088,"corr":0.0101,"job":70.0},{"c":"Romania","r":57,"s":5.825,"reg":"Eastern Europe","econ":1.2177,"fam":1.1501,"health":0.6852,"free":0.457,"gen":0.1335,"corr":0.0044,"job":75.1},{"c":"Bolivia","r":58,"s":5.823,"reg":"Latin America","econ":0.8338,"fam":1.2276,"health":0.4736,"free":0.5587,"gen":0.2256,"corr":0.0605,"job":84.7},{"c":"Turkmenistan","r":59,"s":5.822,"reg":"Asia-Pacific","econ":1.1308,"fam":1.4931,"health":0.4377,"free":0.4183,"gen":0.2499,"corr":0.2593,"job":91.7},{"c":"Kazakhstan","r":60,"s":5.819,"reg":"Asia-Pacific","econ":1.2846,"fam":1.3844,"health":0.606,"free":0.4375,"gen":0.202,"corr":0.1193,"job":79.5},{"c":"North Cyprus","r":61,"s":5.81,"reg":"Eastern Europe","econ":1.3469,"fam":1.1863,"health":0.8346,"free":0.4712,"gen":0.2668,"corr":0.1554,"job":null},{"c":"Slovenia","r":62,"s":5.758,"reg":"Eastern Europe","econ":1.3412,"fam":1.4525,"health":0.7908,"free":0.5726,"gen":0.2426,"corr":0.0451,"job":88.5},{"c":"Peru","r":63,"s":5.715,"reg":"Latin America","econ":1.0352,"fam":1.2188,"health":0.6302,"free":0.45,"gen":0.1268,"corr":0.047,"job":77.4},{"c":"Mauritius","r":64,"s":5.629,"reg":"Africa","econ":1.1894,"fam":1.2096,"health":0.638,"free":0.4912,"gen":0.3609,"corr":0.0422,"job":86.0},{"c":"Cyprus","r":65,"s":5.621,"reg":"Eastern Europe","econ":1.3559,"fam":1.1314,"health":0.8447,"free":0.3551,"gen":0.2713,"corr":0.0412,"job":88.7},{"c":"Estonia","r":66,"s":5.611,"reg":"Eastern Europe","econ":1.3209,"fam":1.4767,"health":0.6952,"free":0.4791,"gen":0.0989,"corr":0.1832,"job":77.8},{"c":"Belarus","r":67,"s":5.569,"reg":"Eastern Europe","econ":1.1566,"fam":1.4449,"health":0.6377,"free":0.2954,"gen":0.1551,"corr":0.1563,"job":71.6},{"c":"Libya","r":68,"s":5.525,"reg":"Africa","econ":1.1018,"fam":1.3576,"health":0.5202,"free":0.4657,"gen":0.1521,"corr":0.0926,"job":75.8},{"c":"Turkey","r":69,"s":5.5,"reg":"Asia-Pacific","econ":1.1983,"fam":1.3378,"health":0.6376,"free":0.3007,"gen":0.0467,"corr":0.0997,"job":74.9},{"c":"Paraguay","r":70,"s":5.493,"reg":"Latin America","econ":0.9325,"fam":1.5073,"health":0.5793,"free":0.4735,"gen":0.2242,"corr":0.0911,"job":84.5},{"c":"Hong Kong S.A.R., China","r":71,"s":5.472,"reg":"Asia-Pacific","econ":1.5517,"fam":1.2628,"health":0.9431,"free":0.491,"gen":0.3745,"corr":0.2939,"job":81.5},{"c":"Philippines","r":72,"s":5.43,"reg":"Asia-Pacific","econ":0.8577,"fam":1.2539,"health":0.468,"free":0.5852,"gen":0.1935,"corr":0.0993,"job":81.4},{"c":"Serbia","r":73,"s":5.395,"reg":"Eastern Europe","econ":1.0693,"fam":1.2582,"health":0.6508,"free":0.2087,"gen":0.2201,"corr":0.0409,"job":68.5},{"c":"Jordan","r":74,"s":5.336,"reg":"Asia-Pacific","econ":0.991,"fam":1.2391,"health":0.6046,"free":0.4184,"gen":0.1722,"corr":0.1198,"job":80.7},{"c":"Hungary","r":75,"s":5.324,"reg":"Eastern Europe","econ":1.286,"fam":1.3431,"health":0.6878,"free":0.1759,"gen":0.0784,"corr":0.0366,"job":82.4},{"c":"Jamaica","r":76,"s":5.311,"reg":"Latin America","econ":0.9256,"fam":1.3682,"health":0.641,"free":0.4743,"gen":0.2338,"corr":0.0553,"job":78.1},{"c":"Croatia","r":77,"s":5.293,"reg":"Eastern Europe","econ":1.2226,"fam":0.968,"health":0.7013,"free":0.2558,"gen":0.248,"corr":0.0431,"job":77.1},{"c":"Kosovo","r":78,"s":5.279,"reg":"Eastern Europe","econ":0.9515,"fam":1.1379,"health":0.5415,"free":0.2603,"gen":0.3199,"corr":0.0575,"job":84.7},{"c":"China","r":79,"s":5.273,"reg":"Asia-Pacific","econ":1.0812,"fam":1.1608,"health":0.7414,"free":0.4728,"gen":0.0288,"corr":0.0228,"job":71.4},{"c":"Pakistan","r":80,"s":5.269,"reg":"Asia-Pacific","econ":0.7269,"fam":0.6727,"health":0.402,"free":0.2352,"gen":0.3154,"corr":0.1243,"job":78.1},{"c":"Indonesia","r":81,"s":5.262,"reg":"Asia-Pacific","econ":0.9955,"fam":1.2744,"health":0.4923,"free":0.4433,"gen":0.6117,"corr":0.0153,"job":73.3},{"c":"Venezuela","r":82,"s":5.25,"reg":"Latin America","econ":1.1284,"fam":1.4313,"health":0.6171,"free":0.154,"gen":0.065,"corr":0.0645,"job":90.1},{"c":"Montenegro","r":83,"s":5.237,"reg":"Eastern Europe","econ":1.1211,"fam":1.2384,"health":0.6675,"free":0.195,"gen":0.1979,"corr":0.0882,"job":69.7},{"c":"Morocco","r":84,"s":5.235,"reg":"Africa","econ":0.8781,"fam":0.7749,"health":0.5977,"free":0.4082,"gen":0.0322,"corr":0.0878,"job":64.8},{"c":"Azerbaijan","r":85,"s":5.234,"reg":"Asia-Pacific","econ":1.1536,"fam":1.1524,"health":0.5408,"free":0.3982,"gen":0.0453,"corr":0.181,"job":69.8},{"c":"Dominican Republic","r":86,"s":5.23,"reg":"Latin America","econ":1.0794,"fam":1.4024,"health":0.5749,"free":0.5526,"gen":0.187,"corr":0.1139,"job":72.7},{"c":"Greece","r":87,"s":5.227,"reg":"Eastern Europe","econ":1.2895,"fam":1.2394,"health":0.8102,"free":0.0957,"gen":0.0,"corr":0.0433,"job":79.2},{"c":"Lebanon","r":88,"s":5.225,"reg":"Asia-Pacific","econ":1.075,"fam":1.1296,"health":0.7351,"free":0.2885,"gen":0.2645,"corr":0.0375,"job":72.3},{"c":"Portugal","r":89,"s":5.195,"reg":"Western Europe","econ":1.3152,"fam":1.367,"health":0.7958,"free":0.4985,"gen":0.0951,"corr":0.0159,"job":88.4},{"c":"Bosnia and Herzegovina","r":90,"s":5.182,"reg":"Eastern Europe","econ":0.9824,"fam":1.0693,"health":0.7052,"free":0.2044,"gen":0.3289,"corr":0.0,"job":73.7},{"c":"Honduras","r":91,"s":5.181,"reg":"Latin America","econ":0.7306,"fam":1.1439,"health":0.5826,"free":0.3481,"gen":0.2362,"corr":0.0733,"job":83.1},{"c":"Macedonia","r":92,"s":5.175,"reg":"Eastern Europe","econ":1.0646,"fam":1.2079,"health":0.6449,"free":0.3259,"gen":0.2538,"corr":0.0603,"job":70.6},{"c":"Somalia","r":93,"s":5.151,"reg":"Africa","econ":0.0226,"fam":0.7212,"health":0.114,"free":0.6021,"gen":0.2916,"corr":0.2824,"job":79.9},{"c":"Vietnam","r":94,"s":5.074,"reg":"Asia-Pacific","econ":0.7885,"fam":1.2775,"health":0.6522,"free":0.5711,"gen":0.235,"corr":0.0876,"job":80.0},{"c":"Nigeria","r":95,"s":5.074,"reg":"Africa","econ":0.7838,"fam":1.2158,"health":0.0569,"free":0.395,"gen":0.2309,"corr":0.0261,"job":71.1},{"c":"Tajikistan","r":96,"s":5.041,"reg":"Asia-Pacific","econ":0.5247,"fam":1.2715,"health":0.5292,"free":0.4716,"gen":0.249,"corr":0.1464,"job":81.3},{"c":"Kyrgyzstan","r":98,"s":5.004,"reg":"Asia-Pacific","econ":0.5962,"fam":1.3942,"health":0.5535,"free":0.4549,"gen":0.4286,"corr":0.0394,"job":76.0},{"c":"Nepal","r":99,"s":4.962,"reg":"Asia-Pacific","econ":0.4798,"fam":1.1793,"health":0.5041,"free":0.4403,"gen":0.3941,"corr":0.073,"job":83.3},{"c":"Mongolia","r":100,"s":4.955,"reg":"Asia-Pacific","econ":1.0272,"fam":1.493,"health":0.5578,"free":0.3941,"gen":0.3385,"corr":0.0329,"job":82.2},{"c":"South Africa","r":101,"s":4.829,"reg":"Africa","econ":1.0547,"fam":1.3848,"health":0.1871,"free":0.4792,"gen":0.1394,"corr":0.0725,"job":61.3},{"c":"Tunisia","r":102,"s":4.805,"reg":"Africa","econ":1.0073,"fam":0.8684,"health":0.6132,"free":0.2897,"gen":0.0497,"corr":0.0867,"job":68.4},{"c":"Palestinian Territories","r":103,"s":4.775,"reg":"Asia-Pacific","econ":0.7162,"fam":1.1556,"health":0.5657,"free":0.2547,"gen":0.1142,"corr":0.0893,"job":69.3},{"c":"Egypt","r":104,"s":4.735,"reg":"Africa","econ":0.9897,"fam":0.9975,"health":0.5202,"free":0.2821,"gen":0.1286,"corr":0.1144,"job":75.1},{"c":"Bulgaria","r":105,"s":4.714,"reg":"Eastern Europe","econ":1.1615,"fam":1.4344,"health":0.7082,"free":0.2892,"gen":0.1132,"corr":0.0111,"job":74.9},{"c":"Sierra Leone","r":106,"s":4.709,"reg":"Africa","econ":0.3684,"fam":0.9841,"health":0.0056,"free":0.3187,"gen":0.293,"corr":0.0711,"job":59.2},{"c":"Cameroon","r":107,"s":4.695,"reg":"Africa","econ":0.5643,"fam":0.946,"health":0.1329,"free":0.4304,"gen":0.2363,"corr":0.0513,"job":64.9},{"c":"Iran","r":108,"s":4.692,"reg":"Asia-Pacific","econ":1.1569,"fam":0.7116,"health":0.6393,"free":0.2493,"gen":0.3872,"corr":0.0488,"job":70.3},{"c":"Albania","r":109,"s":4.644,"reg":"Eastern Europe","econ":0.9962,"fam":0.8037,"health":0.7312,"free":0.3815,"gen":0.2013,"corr":0.0399,"job":73.3},{"c":"Bangladesh","r":110,"s":4.608,"reg":"Asia-Pacific","econ":0.5867,"fam":0.7351,"health":0.5332,"free":0.4784,"gen":0.1723,"corr":0.1237,"job":77.7},{"c":"Namibia","r":111,"s":4.574,"reg":"Africa","econ":0.9644,"fam":1.0985,"health":0.3386,"free":0.5203,"gen":0.0771,"corr":0.0931,"job":85.4},{"c":"Kenya","r":112,"s":4.553,"reg":"Africa","econ":0.5605,"fam":1.068,"health":0.31,"free":0.4528,"gen":0.4449,"corr":0.0646,"job":52.0},{"c":"Mozambique","r":113,"s":4.55,"reg":"Africa","econ":0.2343,"fam":0.8707,"health":0.1067,"free":0.4808,"gen":0.3222,"corr":0.1794,"job":70.8},{"c":"Myanmar","r":114,"s":4.545,"reg":"Asia-Pacific","econ":0.3671,"fam":1.1232,"health":0.3975,"free":0.5145,"gen":0.8381,"corr":0.1888,"job":72.0},{"c":"Senegal","r":115,"s":4.535,"reg":"Africa","econ":0.4793,"fam":1.1797,"health":0.4094,"free":0.3779,"gen":0.1835,"corr":0.1155,"job":54.7},{"c":"Zambia","r":116,"s":4.514,"reg":"Africa","econ":0.6364,"fam":1.0032,"health":0.2578,"free":0.4616,"gen":0.2496,"corr":0.0782,"job":55.2},{"c":"Iraq","r":117,"s":4.497,"reg":"Asia-Pacific","econ":1.1027,"fam":0.9786,"health":0.5012,"free":0.2886,"gen":0.1996,"corr":0.1072,"job":72.0},{"c":"Gabon","r":118,"s":4.465,"reg":"Africa","econ":1.1982,"fam":1.1556,"health":0.3566,"free":0.3123,"gen":0.0438,"corr":0.076,"job":52.5},{"c":"Ethiopia","r":119,"s":4.46,"reg":"Africa","econ":0.3392,"fam":0.8647,"health":0.3534,"free":0.4088,"gen":0.3127,"corr":0.1655,"job":73.7},{"c":"Sri Lanka","r":120,"s":4.44,"reg":"Asia-Pacific","econ":1.0099,"fam":1.26,"health":0.6251,"free":0.5612,"gen":0.4909,"corr":0.0737,"job":84.4},{"c":"Armenia","r":121,"s":4.376,"reg":"Asia-Pacific","econ":0.9006,"fam":1.0075,"health":0.6375,"free":0.1983,"gen":0.0835,"corr":0.0267,"job":50.7},{"c":"India","r":122,"s":4.315,"reg":"Asia-Pacific","econ":0.7922,"fam":0.7544,"health":0.4554,"free":0.47,"gen":0.2315,"corr":0.0922,"job":71.5},{"c":"Mauritania","r":123,"s":4.292,"reg":"Africa","econ":0.6485,"fam":1.272,"health":0.2853,"free":0.0961,"gen":0.2019,"corr":0.137,"job":61.7},{"c":"Congo (Brazzaville)","r":124,"s":4.291,"reg":"Africa","econ":0.809,"fam":0.832,"health":0.29,"free":0.435,"gen":0.1209,"corr":0.0796,"job":60.0},{"c":"Georgia","r":125,"s":4.286,"reg":"Asia-Pacific","econ":0.9506,"fam":0.5706,"health":0.6495,"free":0.3094,"gen":0.054,"corr":0.2517,"job":55.9},{"c":"Congo (Kinshasa)","r":126,"s":4.28,"reg":"Africa","econ":0.0921,"fam":1.229,"health":0.1914,"free":0.236,"gen":0.2465,"corr":0.0602,"job":50.2},{"c":"Mali","r":127,"s":4.19,"reg":"Africa","econ":0.4762,"fam":1.2815,"health":0.1694,"free":0.3066,"gen":0.1834,"corr":0.105,"job":53.7},{"c":"Ivory Coast","r":128,"s":4.18,"reg":"Africa","econ":0.603,"fam":0.9048,"health":0.0486,"free":0.4477,"gen":0.2012,"corr":0.1301,"job":55.3},{"c":"Cambodia","r":129,"s":4.168,"reg":"Asia-Pacific","econ":0.6018,"fam":1.0062,"health":0.4298,"free":0.6334,"gen":0.3859,"corr":0.0681,"job":78.9},{"c":"Sudan","r":130,"s":4.139,"reg":"Africa","econ":0.6595,"fam":1.214,"health":0.2909,"free":0.015,"gen":0.1823,"corr":0.0898,"job":56.7},{"c":"Ghana","r":131,"s":4.12,"reg":"Africa","econ":0.6672,"fam":0.8737,"health":0.2956,"free":0.423,"gen":0.2569,"corr":0.0253,"job":63.1},{"c":"Ukraine","r":132,"s":4.096,"reg":"Europe","econ":0.8947,"fam":1.3945,"health":0.5759,"free":0.123,"gen":0.2701,"corr":0.023,"job":72.3},{"c":"Uganda","r":133,"s":4.081,"reg":"Africa","econ":0.3814,"fam":1.1298,"health":0.2176,"free":0.4432,"gen":0.3258,"corr":0.0571,"job":51.0},{"c":"Burkina Faso","r":134,"s":4.032,"reg":"Africa","econ":0.3502,"fam":1.0433,"health":0.2158,"free":0.3244,"gen":0.2509,"corr":0.1203,"job":56.2},{"c":"Niger","r":135,"s":4.028,"reg":"Africa","econ":0.1619,"fam":0.993,"health":0.2685,"free":0.3637,"gen":0.2287,"corr":0.1386,"job":71.1},{"c":"Malawi","r":136,"s":3.97,"reg":"Africa","econ":0.2334,"fam":0.5126,"health":0.3151,"free":0.4669,"gen":0.2872,"corr":0.0727,"job":51.8},{"c":"Chad","r":137,"s":3.936,"reg":"Africa","econ":0.438,"fam":0.9539,"health":0.0411,"free":0.1623,"gen":0.2161,"corr":0.0536,"job":67.9},{"c":"Zimbabwe","r":138,"s":3.875,"reg":"Africa","econ":0.3758,"fam":1.0831,"health":0.1968,"free":0.3364,"gen":0.1891,"corr":0.0954,"job":56.3},{"c":"Lesotho","r":139,"s":3.808,"reg":"Africa","econ":0.521,"fam":1.1901,"health":0.0,"free":0.3907,"gen":0.1575,"corr":0.1191,"job":44.4},{"c":"Angola","r":140,"s":3.795,"reg":"Africa","econ":0.8584,"fam":1.1044,"health":0.0499,"free":0.0,"gen":0.0979,"corr":0.0697,"job":71.1},{"c":"Afghanistan","r":141,"s":3.794,"reg":"Asia-Pacific","econ":0.4015,"fam":0.5815,"health":0.1807,"free":0.1062,"gen":0.3119,"corr":0.0612,"job":80.0},{"c":"Botswana","r":142,"s":3.766,"reg":"Africa","econ":1.1221,"fam":1.2216,"health":0.3418,"free":0.5052,"gen":0.0993,"corr":0.0986,"job":56.1},{"c":"Benin","r":143,"s":3.657,"reg":"Africa","econ":0.4311,"fam":0.4353,"health":0.2099,"free":0.426,"gen":0.2079,"corr":0.0609,"job":49.3},{"c":"Madagascar","r":144,"s":3.644,"reg":"Africa","econ":0.3058,"fam":0.913,"health":0.3752,"free":0.1892,"gen":0.2087,"corr":0.0672,"job":45.3},{"c":"Haiti","r":145,"s":3.603,"reg":"Latin America","econ":0.3686,"fam":0.6404,"health":0.2773,"free":0.0304,"gen":0.4892,"corr":0.0999,"job":48.5},{"c":"Yemen","r":146,"s":3.593,"reg":"Asia-Pacific","econ":0.5917,"fam":0.9354,"health":0.3101,"free":0.2495,"gen":0.1041,"corr":0.0568,"job":58.9},{"c":"South Sudan","r":147,"s":3.591,"reg":"Africa","econ":0.3972,"fam":0.6013,"health":0.1635,"free":0.1471,"gen":0.2857,"corr":0.1168,"job":null},{"c":"Liberia","r":148,"s":3.533,"reg":"Africa","econ":0.119,"fam":0.8721,"health":0.2299,"free":0.3329,"gen":0.2665,"corr":0.0389,"job":56.6},{"c":"Guinea","r":149,"s":3.507,"reg":"Africa","econ":0.2445,"fam":0.7912,"health":0.1941,"free":0.3486,"gen":0.2648,"corr":0.1109,"job":55.1},{"c":"Togo","r":150,"s":3.495,"reg":"Africa","econ":0.3054,"fam":0.4319,"health":0.2471,"free":0.3804,"gen":0.1969,"corr":0.0957,"job":44.8},{"c":"Rwanda","r":151,"s":3.471,"reg":"Africa","econ":0.3687,"fam":0.9457,"health":0.3264,"free":0.5818,"gen":0.2528,"corr":0.4552,"job":51.7},{"c":"Syria","r":152,"s":3.462,"reg":"Asia-Pacific","econ":0.7772,"fam":0.3961,"health":0.5005,"free":0.0815,"gen":0.4937,"corr":0.1513,"job":62.7},{"c":"Tanzania","r":153,"s":3.349,"reg":"Africa","econ":0.5111,"fam":1.042,"health":0.3645,"free":0.39,"gen":0.3543,"corr":0.066,"job":57.8},{"c":"Burundi","r":154,"s":2.905,"reg":"Africa","econ":0.0916,"fam":0.6298,"health":0.1516,"free":0.0599,"gen":0.2044,"corr":0.0841,"job":54.3},{"c":"Central African Republic","r":155,"s":2.693,"reg":"Africa","econ":0.0,"fam":0.0,"health":0.0188,"free":0.2708,"gen":0.2809,"corr":0.0566,"job":70.4}];
+
+/* =====================  HELPERS  ===================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const fmt = (n, d = 1) => Number(n).toFixed(d);
+const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const pairKey = (a, b) => [a, b].sort().join('|');
+const byName = Object.fromEntries(DATA.map(d => [d.c, d]));
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+/* =====================  FIXED SET OF QUESTIONS (same for every player) ===================== */
+const rng = mulberry32(CONFIG.SEED);
+const sorted = [...DATA].sort((a, b) => b.s - a.s);
+const RATED = [];
+{
+  const bin = sorted.length / CONFIG.RATE_COUNT;
+  for (let i = 0; i < CONFIG.RATE_COUNT; i++) {
+    const lo = Math.floor(i * bin), hi = Math.floor((i + 1) * bin);
+    RATED.push(sorted[lo + Math.floor(rng() * (hi - lo))]);
+  }
+}
+const ratedSet = new Set(RATED.map(d => d.c));
+const POOL = sorted.filter(d => !ratedSet.has(d.c));
+const TIERS = [[1.8,4.5],[1.8,4.5],[1.0,1.8],[1.0,1.8],[0.55,1.0],[0.55,1.0],[0.25,0.55],[0.25,0.55]]; // easy -> hard score gaps
+const PAIRS = [];
+{
+  const used = new Set();
+  for (const [lo, hi] of TIERS) {
+    for (let k = 0; k < 20000; k++) {
+      const a = POOL[Math.floor(rng() * POOL.length)], b = POOL[Math.floor(rng() * POOL.length)];
+      if (a === b || used.has(a.c) || used.has(b.c)) continue;
+      const g = Math.abs(a.s - b.s);
+      if (g >= lo && g < hi) { used.add(a.c); used.add(b.c); PAIRS.push([a, b]); break; }
+    }
+  }
+}
+$('n-rate').textContent = RATED.length;
+$('n-quiz').textContent = PAIRS.length;
+
+/* =====================  FACTOR STATS  ===================== */
+const FACTORS = [
+  { k:'Economy',            f:'econ',   words:['econom','money','wealth','income','gdp','rich','poor','poverty','financ','job','salary','wage','afford','prosper','cost of living','resourc'] },
+  { k:'Family & social support', f:'fam', words:['family','famil','social','communit','friend','relationship','support','connect','belong','together','loved ones'] },
+  { k:'Health',             f:'health', words:['health','life expectancy','medical','hospital','doctor','longevity','wellness','healthcare'] },
+  { k:'Freedom',            f:'free',   words:['freedom','liberty','democra','rights','choice','autonomy','oppress','independen'] },
+  { k:'Generosity',         f:'gen',    words:['generos','charit','giving','donat','kindness','volunteer','altruis'] },
+  { k:'Low corruption',     f:'corr',   words:['corrupt','trust','transparen','honest','government','institution','accountab'] },
+  { k:'Job satisfaction',   f:'job',    words:['job satisf','work-life','work life','career','workplace','employ'] }
+];
+const OTHER_THEMES = [
+  { k:'Safety & stability', words:['safe','war','conflict','stab','crime','peace','secur','violence'] },
+  { k:'Climate & nature',   words:['weather','climate','nature','sun','environment','outdoor'] },
+  { k:'Culture & values',   words:['cultur','tradition','values','religio','attitude','mindset','expectation','lifestyle'] },
+  { k:'Education',          words:['educat','school','universit','literacy'] }
+];
+function pearson(xs, ys) {
+  const p = xs.map((x, i) => [x, ys[i]]).filter(([x, y]) => x != null && y != null && !isNaN(x) && !isNaN(y));
+  const n = p.length, mx = p.reduce((a, b) => a + b[0], 0) / n, my = p.reduce((a, b) => a + b[1], 0) / n;
+  let sxy = 0, sxx = 0, syy = 0;
+  p.forEach(([x, y]) => { sxy += (x - mx) * (y - my); sxx += (x - mx) ** 2; syy += (y - my) ** 2; });
+  return sxy / Math.sqrt(sxx * syy);
+}
+const FACTOR_STATS = FACTORS.map(F => ({ key: F.k, r: pearson(DATA.map(d => d[F.f]), DATA.map(d => d.s)) }))
+                            .sort((a, b) => b.r - a.r);
+
+/* =====================  STATE  ===================== */
+const state = { ratings: {}, picks: {}, quiz: [], rateOrder: [], result: null, analysis: null, charts: {} };
+const hasBackend = () => !!CONFIG.APPS_SCRIPT_URL;
+if (!hasBackend()) {
+  const b = $('demo-banner');
+  b.hidden = false;
+  b.innerHTML = '<b>Local demo mode.</b> No Google Sheet is connected yet, so answers stay in this browser and the open-ended answer is analysed with simple keyword matching instead of Gemini. See SETUP.md to connect your Apps Script.';
+}
+
+/* =====================  NAVIGATION  ===================== */
+const SCREENS = ['intro','rate','quiz','why','loading','results'];
+function show(name) {
+  SCREENS.forEach(s => $('s-' + s).hidden = s !== name);
+  const idx = { intro:-1, rate:0, quiz:1, why:2, loading:2, results:3 }[name];
+  [...$('steps').children].forEach((el, i) => el.classList.toggle('on', i <= idx));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* =====================  PART 1: RATE  ===================== */
+function buildRate() {
+  state.rateOrder = shuffle(RATED);
+  const box = $('rate-list'); box.innerHTML = '';
+  state.rateOrder.forEach(d => {
+    const row = document.createElement('div'); row.className = 'rate';
+    row.innerHTML = `<div class="top"><div><span class="name">${esc(d.c)}</span><span class="chip">${esc(d.reg)}</span></div><span class="val untouched">&ndash;</span></div>
+      <input type="range" min="0" max="10" step="0.1" value="5" class="untouched" aria-label="Happiness rating for ${esc(d.c)}">
+      <div class="scale"><span>0 &middot; least happy</span><span>10 &middot; happiest</span></div>`;
+    const input = row.querySelector('input'), val = row.querySelector('.val');
+    input.addEventListener('input', () => {
+      input.classList.remove('untouched'); val.classList.remove('untouched');
+      val.textContent = fmt(input.value);
+      state.ratings[d.c] = parseFloat(input.value);
+      updateRateProgress();
+    });
+    box.appendChild(row);
+  });
+  updateRateProgress();
+}
+function updateRateProgress() {
+  const n = Object.keys(state.ratings).length;
+  $('rate-progress').textContent = `${n} of ${RATED.length} graded`;
+  $('btn-rate-next').disabled = n < RATED.length;
+}
+
+/* =====================  PART 2: QUIZ  ===================== */
+function buildQuiz() {
+  state.quiz = shuffle(PAIRS).map(p => shuffle(p));
+  const box = $('quiz-list'); box.innerHTML = '';
+  state.quiz.forEach(([a, b], i) => {
+    const key = pairKey(a.c, b.c);
+    const el = document.createElement('div'); el.className = 'pair';
+    el.innerHTML = `<div class="q">${i + 1}. Which country has the higher happiness score?</div>
+      <div class="choices"><button class="choice" data-c="${esc(a.c)}">${esc(a.c)}</button><button class="choice" data-c="${esc(b.c)}">${esc(b.c)}</button></div>`;
+    el.querySelectorAll('.choice').forEach(btn => btn.addEventListener('click', () => {
+      el.querySelectorAll('.choice').forEach(x => x.classList.remove('sel'));
+      btn.classList.add('sel');
+      state.picks[key] = btn.dataset.c;
+      const n = Object.keys(state.picks).length;
+      $('quiz-progress').textContent = `${n} of ${PAIRS.length} answered`;
+      $('btn-quiz-next').disabled = n < PAIRS.length;
+    }));
+    box.appendChild(el);
+  });
+  $('quiz-progress').textContent = `0 of ${PAIRS.length} answered`;
+  $('btn-quiz-next').disabled = true;
+}
+
+/* =====================  PART 3: WHY  ===================== */
+$('why').addEventListener('input', () => {
+  const v = $('why').value.trim();
+  $('why-count').textContent = `${$('why').value.length} / 2000`;
+  $('btn-finish').disabled = v.length < 15;
+});
+
+/* =====================  SCORING  ===================== */
+function buildResult() {
+  const ratingRows = RATED.map(d => ({ c: d.c, reg: d.reg, you: state.ratings[d.c], actual: d.s, diff: state.ratings[d.c] - d.s }));
+  const correct = {}; const quizRows = [];
+  PAIRS.forEach(([a, b]) => {
+    const key = pairKey(a.c, b.c), winner = a.s >= b.s ? a : b, loser = winner === a ? b : a;
+    const pick = state.picks[key];
+    correct[key] = pick === winner.c ? 1 : 0;
+    quizRows.push({ key, winner, loser, pick, ok: pick === winner.c });
+  });
+  const score = quizRows.filter(q => q.ok).length;
+  const avgErr = ratingRows.reduce((a, r) => a + Math.abs(r.diff), 0) / ratingRows.length;
+  const avgBias = ratingRows.reduce((a, r) => a + r.diff, 0) / ratingRows.length;
+  return { ratingRows, quizRows, correct, score, avgErr, avgBias };
+}
+
+/* =====================  ANALYSIS OF OPEN-ENDED ANSWER  ===================== */
+function localAnalysis(text) {
+  const t = ' ' + text.toLowerCase() + ' ';
+  const mentioned = FACTORS.filter(F => F.words.some(w => t.includes(w))).map(F => F.k);
+  const other = OTHER_THEMES.filter(T => T.words.some(w => t.includes(w))).map(T => T.k);
+  const themes = [...mentioned, ...other];
+  const top3 = FACTOR_STATS.slice(0, 3).map(s => s.key);
+  const hit = mentioned.filter(k => top3.includes(k));
+  const missed = FACTOR_STATS.find(s => !mentioned.includes(s.key));
+  const r = k => fmt(FACTOR_STATS.find(s => s.key === k).r, 2);
+  let fb = '';
+  if (hit.length) fb += `You picked up on ${hit.join(' and ')}, which rank among the strongest links to happiness scores in this data (r = ${hit.map(r).join(', ')}). `;
+  else if (mentioned.length) fb += `You mentioned ${mentioned.join(', ')}. These show some relationship to happiness scores, though the strongest links in this data are ${top3.join(', ')}. `;
+  else fb += `Your answer didn't touch on the factors measured in this dataset directly. The strongest links to happiness scores are ${top3.join(', ')}. `;
+  if (other.length) fb += `${other.join(' and ')} aren't measured in this dataset, so the data can't confirm or challenge them. `;
+  if (missed && !hit.includes(missed.key) && !top3.slice(0,1).every(k => mentioned.includes(k))) fb += `The biggest factor you didn't mention: ${FACTOR_STATS[0].key} (r = ${fmt(FACTOR_STATS[0].r, 2)}).`;
+  return { themes: themes.length ? themes : ['General reasoning'], factors_mentioned: mentioned, feedback: fb.trim(), source: 'local' };
+}
+
+/* =====================  BACKEND  ===================== */
+async function apiFetch(url, opts, ms = 30000) {
+  const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), ms);
+  try { const r = await fetch(url, { ...opts, signal: ctl.signal, redirect: 'follow' }); return await r.json(); }
+  finally { clearTimeout(timer); }
+}
+const apiPost = (payload) => apiFetch(CONFIG.APPS_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
+const apiGet  = (action) => apiFetch(CONFIG.APPS_SCRIPT_URL + (CONFIG.APPS_SCRIPT_URL.includes('?') ? '&' : '?') + 'action=' + action, {});
+
+const LOCAL_KEY = 'happinessQuizPlayers_v1';
+const localRows = () => { try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); } catch (e) { return []; } };
+const saveLocalRows = rows => { try { localStorage.setItem(LOCAL_KEY, JSON.stringify(rows)); } catch (e) {} };
+
+/* Same aggregation the Apps Script performs, used in local demo mode */
+function aggregateLocal() {
+  const rows = localRows();
+  const agg = { n: rows.length, scoreCounts: {}, avgScore: 0, avgErr: 0, countries: {}, pairs: {}, themes: [], summary: null };
+  const themeCount = {};
+  rows.forEach(r => {
+    agg.scoreCounts[r.score] = (agg.scoreCounts[r.score] || 0) + 1;
+    agg.avgScore += r.score; agg.avgErr += r.avgErr;
+    Object.entries(r.ratings).forEach(([c, v]) => { const o = agg.countries[c] || (agg.countries[c] = { sum: 0, n: 0 }); o.sum += v; o.n++; });
+    Object.entries(r.correct).forEach(([k, v]) => { const o = agg.pairs[k] || (agg.pairs[k] = { ok: 0, n: 0 }); o.ok += v; o.n++; });
+    (r.themes || []).forEach(t => themeCount[t] = (themeCount[t] || 0) + 1);
+  });
+  if (agg.n) { agg.avgScore /= agg.n; agg.avgErr /= agg.n; }
+  Object.values(agg.countries).forEach(o => { o.mean = o.sum / o.n; });
+  agg.themes = Object.entries(themeCount).map(([theme, count]) => ({ theme, count })).sort((a, b) => b.count - a.count).slice(0, 10);
+  return agg;
+}
+
+/* =====================  FINISH  ===================== */
+async function finish() {
+  show('loading');
+  const text = $('why').value.trim();
+  const res = buildResult(); state.result = res;
+  let analysis = null, saveMsg = '';
+  const payload = {
+    action: 'submit', player: $('player').value.trim().slice(0, 40), ratings: state.ratings, correct: res.correct,
+    score: res.score, avgErr: res.avgErr, text,
+    factorStats: FACTOR_STATS.map(s => ({ factor: s.key, r: Math.round(s.r * 100) / 100 })),
+    localThemes: localAnalysis(text).themes
+  };
+  if (hasBackend()) {
+    try {
+      const out = await apiPost(payload);
+      if (out && out.ok) { analysis = out.analysis ? { ...out.analysis, source: 'gemini' } : null; if (out.geminiError) console.warn(out.geminiError); }
+      else throw new Error((out && out.error) || 'Unknown error');
+    } catch (e) {
+      console.warn(e);
+      saveMsg = "We couldn't reach the shared Google Sheet, so your answers weren't saved there. Your results below are still accurate.";
+    }
+  } else {
+    saveLocalRows([...localRows(), { ratings: state.ratings, correct: res.correct, score: res.score, avgErr: res.avgErr, themes: payload.localThemes, text }]);
+  }
+  state.analysis = analysis || localAnalysis(text);
+  const note = $('save-note');
+  note.hidden = !saveMsg; note.textContent = saveMsg;
+  renderResults();
+  show('results');
+}
+
+/* =====================  RENDER RESULTS  ===================== */
+function chartDefaults() {
+  Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+  Chart.defaults.color = cssVar('--muted');
+}
+function killChart(k) { if (state.charts[k]) { state.charts[k].destroy(); delete state.charts[k]; } }
+function verdict(diff) {
+  const a = Math.abs(diff);
+  if (a <= 0.7) return ['ok', 'Spot on'];
+  if (a <= 1.5) return ['near', diff > 0 ? 'A bit high' : 'A bit low'];
+  return ['off', diff > 0 ? 'Too high' : 'Too low'];
+}
+
+function renderResults() {
+  chartDefaults();
+  const R = state.result;
+  const rows = [...R.ratingRows].sort((a, b) => b.actual - a.actual);
+  const best = [...rows].sort((a, b) => Math.abs(a.diff) - Math.abs(b.diff))[0];
+  const worst = [...rows].sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff))[0];
+
+  $('stats').innerHTML = `
+    <div class="stat"><b>${R.score} / ${PAIRS.length}</b><small>Quiz score</small></div>
+    <div class="stat"><b>${fmt(R.avgErr)}</b><small>Average rating miss (points)</small></div>
+    <div class="stat"><b>${R.avgBias >= 0 ? '+' : ''}${fmt(R.avgBias)}</b><small>${R.avgBias >= 0 ? 'You rated higher than reality on average' : 'You rated lower than reality on average'}</small></div>
+    <div class="stat"><b>${esc(best.c)}</b><small>Your closest guess (off by ${fmt(Math.abs(best.diff))})</small></div>
+    <div class="stat"><b>${esc(worst.c)}</b><small>Your biggest miss (off by ${fmt(Math.abs(worst.diff))})</small></div>`;
+
+  // Chart 1: grouped horizontal bars
+  killChart('rating');
+  $('box-rating').style.height = Math.max(380, rows.length * 44) + 'px';
+  state.charts.rating = new Chart($('ch-rating'), {
+    type: 'bar',
+    data: { labels: rows.map(r => r.c), datasets: [
+      { label: 'Your rating', data: rows.map(r => r.you), backgroundColor: cssVar('--you'), borderRadius: 4 },
+      { label: 'Actual score', data: rows.map(r => r.actual), backgroundColor: cssVar('--actual'), borderRadius: 4 } ] },
+    options: { indexAxis: 'y', maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { x: { min: 0, max: 10, title: { display: true, text: 'Happiness (0–10)' } }, y: { grid: { display: false } } } }
+  });
+
+  // Table
+  $('tbl-rating').innerHTML = `<thead><tr><th>Country</th><th class="num">You</th><th class="num">Actual</th><th class="num">Rank</th><th></th></tr></thead><tbody>` +
+    rows.map(r => { const [cls, txt] = verdict(r.diff); return `<tr><td>${esc(r.c)}<span class="chip">${esc(r.reg)}</span></td><td class="num">${fmt(r.you)}</td><td class="num">${fmt(r.actual, 2)}</td><td class="num">#${byName[r.c].r}</td><td><span class="tag ${cls}">${txt}</span></td></tr>`; }).join('') + `</tbody>`;
+
+  // Chart 2: scatter
+  killChart('scatter');
+  state.charts.scatter = new Chart($('ch-scatter'), {
+    type: 'scatter',
+    data: { datasets: [
+      { label: 'Your ratings', data: rows.map(r => ({ x: r.actual, y: r.you, name: r.c })), backgroundColor: cssVar('--you'), pointRadius: 6, pointHoverRadius: 8 },
+      { type: 'line', label: 'Perfect guess', data: [{ x: 0, y: 0 }, { x: 10, y: 10 }], borderColor: cssVar('--muted'), borderDash: [6, 6], pointRadius: 0, borderWidth: 1.5 } ] },
+    options: { maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: c => c.raw.name ? `${c.raw.name}: you ${fmt(c.raw.y)}, actual ${fmt(c.raw.x, 2)}` : '' } } },
+      scales: { x: { min: 0, max: 10, title: { display: true, text: 'Actual score' } }, y: { min: 0, max: 10, title: { display: true, text: 'Your rating' } } } }
+  });
+
+  // Quiz review
+  $('quiz-score-txt').textContent = `${R.score} of ${PAIRS.length} correct`;
+  $('quiz-review').innerHTML = R.quizRows.map(q => `
+    <div class="review ${q.ok ? 'ok' : 'off'}">
+      <div><b>${esc(q.winner.c)}</b> (${fmt(q.winner.s, 2)}) vs. ${esc(q.loser.c)} (${fmt(q.loser.s, 2)})</div>
+      <div><span class="tag ${q.ok ? 'ok' : 'off'}">${q.ok ? 'Correct' : 'Wrong'}</span></div>
+      <div class="muted" style="font-size:.88rem;grid-column:1/-1">You picked ${esc(q.pick)}. The gap was ${fmt(q.winner.s - q.loser.s, 2)} points.</div>
+    </div>`).join('');
+
+  // Analysis
+  const A = state.analysis;
+  $('analysis-source').textContent = A.source === 'gemini' ? 'Analysed by Gemini' : 'Analysed with simple keyword matching (connect Gemini for deeper analysis)';
+  const th = $('themes'); th.innerHTML = '';
+  (A.themes || []).forEach(t => { const s = document.createElement('span'); s.className = 'theme'; s.textContent = t; th.appendChild(s); });
+  $('feedback').textContent = A.feedback || '';
+  const mentioned = new Set(A.factors_mentioned || []);
+  killChart('factors');
+  state.charts.factors = new Chart($('ch-factors'), {
+    type: 'bar',
+    data: { labels: FACTOR_STATS.map(s => s.key), datasets: [{ data: FACTOR_STATS.map(s => s.r),
+      backgroundColor: FACTOR_STATS.map(s => mentioned.has(s.key) ? cssVar('--you') : '#b7c4cf'), borderRadius: 4 }] },
+    options: { indexAxis: 'y', maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `r = ${fmt(c.raw, 2)}` } } },
+      scales: { x: { min: 0, max: 1, title: { display: true, text: 'Correlation with happiness score' } }, y: { grid: { display: false } } } }
+  });
+}
+
+/* =====================  COMPARE  ===================== */
+async function showCompare() {
+  const wrap = $('compare'), status = $('compare-status'), body = $('compare-body');
+  wrap.hidden = false; body.hidden = true; status.hidden = false;
+  status.innerHTML = '<span class="spinner"></span>Loading other players’ answers…';
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  let agg;
+  try {
+    if (hasBackend()) { const out = await apiGet('compare'); if (!out || !out.ok) throw new Error((out && out.error) || 'Unknown error'); agg = out.agg; }
+    else agg = aggregateLocal();
+  } catch (e) {
+    console.warn(e);
+    status.textContent = "Couldn't load the shared results right now. Please try again in a moment.";
+    return;
+  }
+  if (!agg || !agg.n) { status.textContent = 'No other responses yet.'; return; }
+  status.hidden = agg.n > 1;
+  if (agg.n <= 1) status.innerHTML = 'You’re the first player so far — the charts below will fill out as more people take the quiz.';
+  body.hidden = false;
+  renderCompare(agg);
+}
+
+function renderCompare(agg) {
+  chartDefaults();
+  const R = state.result, n = agg.n;
+  let below = 0, tied = 0;
+  Object.entries(agg.scoreCounts).forEach(([s, c]) => { if (+s < R.score) below += c; else if (+s === R.score) tied += c; });
+  const pct = Math.round((below + tied / 2) / n * 100);
+  $('cmp-stats').innerHTML = `
+    <div class="stat"><b>${n}</b><small>Players so far</small></div>
+    <div class="stat"><b>${fmt(agg.avgScore)} / ${PAIRS.length}</b><small>Average quiz score (you: ${R.score})</small></div>
+    <div class="stat"><b>${n > 1 ? pct + '%' : '–'}</b><small>of players you matched or beat</small></div>
+    <div class="stat"><b>${fmt(agg.avgErr)}</b><small>Average rating miss (you: ${fmt(R.avgErr)})</small></div>`;
+
+  // Crowd chart
+  const rows = [...R.ratingRows].sort((a, b) => b.actual - a.actual);
+  const crowd = rows.map(r => agg.countries[r.c] ? agg.countries[r.c].mean : null);
+  const counts = rows.map(r => agg.countries[r.c] ? agg.countries[r.c].n : 0);
+  killChart('crowd');
+  $('box-crowd').style.height = Math.max(420, rows.length * 56) + 'px';
+  state.charts.crowd = new Chart($('ch-crowd'), {
+    type: 'bar',
+    data: { labels: rows.map(r => r.c), datasets: [
+      { label: 'You', data: rows.map(r => r.you), backgroundColor: cssVar('--you'), borderRadius: 3 },
+      { label: 'Crowd average', data: crowd, backgroundColor: cssVar('--crowd'), borderRadius: 3 },
+      { label: 'Actual', data: rows.map(r => r.actual), backgroundColor: cssVar('--actual'), borderRadius: 3 } ] },
+    options: { indexAxis: 'y', maintainAspectRatio: false, plugins: { legend: { display: false },
+        tooltip: { callbacks: { afterLabel: c => c.dataset.label === 'Crowd average' ? `${counts[c.dataIndex]} players` : '' } } },
+      scales: { x: { min: 0, max: 10 }, y: { grid: { display: false } } } }
+  });
+
+  // Pairs chart
+  const pr = R.quizRows.map(q => ({ label: `${q.winner.c} vs ${q.loser.c}`, crowd: agg.pairs[q.key] ? agg.pairs[q.key].ok / agg.pairs[q.key].n * 100 : null, you: q.ok ? 100 : 0 }));
+  killChart('pairs');
+  $('box-pairs').style.height = Math.max(340, pr.length * 56) + 'px';
+  state.charts.pairs = new Chart($('ch-pairs'), {
+    type: 'bar',
+    data: { labels: pr.map(p => p.label), datasets: [
+      { label: 'Players who got it right (%)', data: pr.map(p => p.crowd), backgroundColor: cssVar('--crowd'), borderRadius: 3 },
+      { label: 'You (100 = correct)', data: pr.map(p => p.you), backgroundColor: pr.map(p => p.you ? cssVar('--good') : cssVar('--bad')), borderRadius: 3 } ] },
+    options: { indexAxis: 'y', maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } },
+      scales: { x: { min: 0, max: 100 }, y: { grid: { display: false } } } }
+  });
+
+  // Histogram
+  const bins = Array.from({ length: PAIRS.length + 1 }, (_, i) => agg.scoreCounts[i] || 0);
+  killChart('hist');
+  state.charts.hist = new Chart($('ch-hist'), {
+    type: 'bar',
+    data: { labels: bins.map((_, i) => String(i)), datasets: [{ label: 'Players', data: bins,
+      backgroundColor: bins.map((_, i) => i === R.score ? cssVar('--you') : '#b7c4cf'), borderRadius: 4 }] },
+    options: { maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { x: { title: { display: true, text: 'Quiz score (your bar is orange)' }, grid: { display: false } }, y: { beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: 'Players' } } } }
+  });
+
+  // Themes + summary
+  const ct = $('cmp-themes'); ct.innerHTML = '';
+  (agg.themes || []).forEach(t => { const s = document.createElement('span'); s.className = 'theme'; s.textContent = `${t.theme} · ${t.count}`; ct.appendChild(s); });
+  $('cmp-summary').textContent = agg.summary || (hasBackend() ? '' : 'Connect Gemini via the Apps Script to get a written summary of everyone’s answers.');
+}
+
+/* =====================  DEMO: simulated players (local mode only)  ===================== */
+function simulatePlayers(count = 30) {
+  const rows = localRows(), gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) * 2;
+  const pool = ['Economy','Family & social support','Health','Freedom','Generosity','Low corruption','Safety & stability','Culture & values'];
+  for (let i = 0; i < count; i++) {
+    const ratings = {}; let err = 0;
+    RATED.forEach(d => { const v = Math.min(10, Math.max(0, d.s + 0.7 + gauss() * 1.4)); ratings[d.c] = Math.round(v * 10) / 10; err += Math.abs(ratings[d.c] - d.s); });
+    const correct = {}; let score = 0;
+    PAIRS.forEach(([a, b]) => { const p = 1 / (1 + Math.exp(-Math.abs(a.s - b.s) * 2.2)); const ok = Math.random() < p ? 1 : 0; correct[pairKey(a.c, b.c)] = ok; score += ok; });
+    rows.push({ ratings, correct, score, avgErr: err / RATED.length, themes: shuffle(pool).slice(0, 1 + Math.floor(Math.random() * 3)), text: '(simulated)' });
+  }
+  saveLocalRows(rows);
+}
+
+/* =====================  WIRING  ===================== */
+$('btn-start').addEventListener('click', () => { buildRate(); show('rate'); });
+$('btn-rate-next').addEventListener('click', () => { buildQuiz(); show('quiz'); });
+$('btn-quiz-back').addEventListener('click', () => show('rate'));
+$('btn-quiz-next').addEventListener('click', () => show('why'));
+$('btn-why-back').addEventListener('click', () => show('quiz'));
+$('btn-finish').addEventListener('click', finish);
+$('btn-compare').addEventListener('click', showCompare);
+$('btn-restart').addEventListener('click', () => {
+  state.ratings = {}; state.picks = {}; $('why').value = ''; $('why-count').textContent = '0 / 2000'; $('btn-finish').disabled = true;
+  $('compare').hidden = true; show('intro');
+});
+if (!hasBackend()) {
+  const b = $('demo-banner');
+  const sim = document.createElement('a'); sim.href = '#'; sim.textContent = 'Add 30 simulated players to preview the comparison view';
+  sim.style.marginLeft = '6px';
+  sim.addEventListener('click', e => { e.preventDefault(); simulatePlayers(30); sim.textContent = 'Added 30 simulated players ✓'; });
+  b.appendChild(document.createElement('br')); b.appendChild(sim);
+}
+show('intro');
+</script>
+</body>
+</html>
